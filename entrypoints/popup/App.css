@@ -1,0 +1,78 @@
+#root {
+  min-width: 280px;
+  padding: 1rem 1.25rem;
+}
+
+.tibia-prices-popup {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.tibia-prices-title {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+.tibia-prices-desc {
+  margin: 0;
+  font-size: 0.875rem;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.tibia-prices-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0.25rem 0;
+}
+
+.tibia-prices-input {
+  width: 6rem;
+  padding: 0.5rem 0.6rem;
+  font-size: 1rem;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.08);
+  color: inherit;
+}
+
+.tibia-prices-input:focus {
+  outline: 2px solid #646cff;
+  outline-offset: 1px;
+}
+
+.tibia-prices-suffix {
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.tibia-prices-saved {
+  margin: 0;
+  font-size: 0.8rem;
+  color: #7cb342;
+}
+
+.tibia-prices-hint {
+  margin: 0;
+  font-size: 0.75rem;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+@media (prefers-color-scheme: light) {
+  .tibia-prices-desc {
+    color: rgba(0, 0, 0, 0.65);
+  }
+  .tibia-prices-input {
+    border-color: rgba(0, 0, 0, 0.2);
+    background: rgba(0, 0, 0, 0.04);
+  }
+  .tibia-prices-suffix {
+    color: rgba(0, 0, 0, 0.75);
+  }
+  .tibia-prices-hint {
+    color: rgba(0, 0, 0, 0.5);
+  }
+}

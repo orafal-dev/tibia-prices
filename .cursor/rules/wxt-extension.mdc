@@ -1,0 +1,48 @@
+---
+description: WXT web extension framework conventions and entrypoint rules
+globs: "entrypoints/**/*,wxt.config.*"
+alwaysApply: false
+---
+
+# WXT Extension Rules
+
+This project uses [WXT](https://wxt.dev/guide/introduction.html) for building the browser extension. Follow these conventions when editing config or entrypoints.
+
+## Project structure
+
+- **Config**: Use `defineConfig` from `'wxt'` in `wxt.config.ts`. Add manifest options under `manifest` (or `manifest: ({ browser, manifestVersion, mode, command }) => ({ ... })` for dynamic config).
+- **Entrypoints** live under `entrypoints/`. Each entrypoint is either a single file (`background.ts`, `content.ts`) or a directory with an `index` file (e.g. `popup/index.html` + `popup/main.tsx`).
+- **Do not** put related files as siblings in `entrypoints/` (e.g. `popup.html`, `popup.ts`) or WXT will treat them as separate entrypoints. Use a directory: `entrypoints/popup/index.html`, `entrypoints/popup/main.tsx`.
+
+## Background and content script entrypoints
+
+- **Background**: Export `defineBackground(() => { ... })` or `defineBackground({ main() { ... } })`. The `main` function must be **synchronous** (no async). Do **not** put runtime code (e.g. `browser.action.onClicked.addListener(...)`) at top level; WXT loads the file in Node during build. Put all runtime logic inside the callback or `main()`.
+
+```typescript
+// ❌ BAD – top-level runtime code
+browser.action.onClicked.addListener(() => {});
+export default defineBackground(() => {});
+
+// ✅ GOOD – all logic inside defineBackground
+export default defineBackground(() => {
+  browser.action.onClicked.addListener(() => {});
+});
+```
+
+- **Content script**: Export `defineContentScript({ matches: [...], main(ctx) { ... } })`. Same rule: no top-level runtime code; put everything inside `main()`.
+
+## HTML entrypoints (popup, options, etc.)
+
+- Use `<meta name="manifest.*" content="..." />` in `<head>` for manifest options (e.g. `manifest.type` for `page_action` vs `browser_action`).
+- Popup: `entrypoints/popup/index.html` is the entrypoint; link your script from that HTML (e.g. `main.tsx`).
+
+## Naming and output paths
+
+| Entrypoint name   | Output path / role        |
+|-------------------|----------------------------|
+| `background.ts`   | `/background.js`           |
+| `popup/index.html`| `/popup.html`              |
+| `content.ts`      | `/content-scripts/content.js` |
+| `{name}.content.ts` | `/content-scripts/{name}.js` |
+
+Refer to [WXT Entrypoints](https://wxt.dev/guide/essentials/entrypoints.html) and [Manifest config](https://wxt.dev/guide/essentials/config/manifest.html) for full options.
