@@ -18,5 +18,13 @@ export default defineConfig({
     name: 'Tibia Prices',
     description: 'Tibia TC to PLN price converter for the character trade market',
     permissions: ['storage'],
+    browser_specific_settings: {
+      gecko: {
+        data_collection_permissions: {
+          required: ['none'],
+          optional: [],
+        },
+      },
+    },
   },
 });
