@@ -5,7 +5,7 @@ import { createIntegratedUi } from 'wxt/utils/content-script-ui/integrated';
 import { defineContentScript } from 'wxt/utils/define-content-script';
 import CharacterLinks from './CharacterLinks';
 
-const TIBIATIME_BASE = 'https://tibiatime.botox.boo/characters/';
+const TIBIATIME_BASE = 'https://tibiatime.app/characters/';
 const GUILDSTATS_BASE = 'https://guildstats.eu/character';
 const CHAR_BAZAAR_BASE =
   'https://www.tibia.com/charactertrade/?subtopic=currentcharactertrades';
