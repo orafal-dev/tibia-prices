@@ -5,13 +5,13 @@ const DEFAULT_PRICE_PLN = 40;
 const DEFAULT_PRICE_EUR = 0;
 
 import {
-  AUCTION_LIST_ROW_XPATH,
+  CHARACTER_TRADE_ROOT_IDS,
+  getActiveCharacterTradeRootId,
+  getAuctionDetailsTcXPath,
+  getAuctionListRowXPath,
+  getTcElementsFromShortAuctionDataValues,
   TC_IN_AUCTION_ROW_XPATH,
 } from './lib/auction-dom';
-
-/** XPath for TC on specific character auction (details). */
-const XPATH_TC_AUCTION_DETAILS =
-  '//*[@id="currentcharactertrades"]/div[5]/div/div/div[3]/table/tbody/tr/td/div[2]/table/tbody/tr/td/div/table/tbody/tr/td/div/div[2]/div[3]/div[6]/div[2]/b';
 
 type PricesPer250 = { pln: number; eur: number };
 
@@ -85,32 +85,50 @@ const injectPriceHint = (
 };
 
 const getTcElementsOnAuctionList = (): Element[] => {
-  const rows = evaluateXPath(document, AUCTION_LIST_ROW_XPATH);
   const tcElements: Element[] = [];
-  for (const row of rows) {
-    if (row.nodeType !== Node.ELEMENT_NODE) continue;
-    const result = document.evaluate(
-      TC_IN_AUCTION_ROW_XPATH,
-      row,
-      null,
-      XPathResult.ORDERED_NODE_SNAPSHOT_TYPE,
-      null
-    );
-    for (let i = 0; i < result.snapshotLength; i++) {
-      const node = result.snapshotItem(i);
-      if (node && node.nodeType === Node.ELEMENT_NODE) {
-        tcElements.push(node as Element);
+
+  for (const rootId of Object.values(CHARACTER_TRADE_ROOT_IDS)) {
+    const rows = evaluateXPath(document, getAuctionListRowXPath(rootId));
+    for (const row of rows) {
+      if (row.nodeType !== Node.ELEMENT_NODE) continue;
+      const result = document.evaluate(
+        TC_IN_AUCTION_ROW_XPATH,
+        row,
+        null,
+        XPathResult.ORDERED_NODE_SNAPSHOT_TYPE,
+        null
+      );
+      for (let i = 0; i < result.snapshotLength; i++) {
+        const node = result.snapshotItem(i);
+        if (node && node.nodeType === Node.ELEMENT_NODE) {
+          tcElements.push(node as Element);
+        }
       }
     }
   }
+
   return tcElements;
 };
 
-const runConversion = (prices: PricesPer250): void => {
+const getTcElementsForConversion = (): Element[] => {
   const isDetails = document.URL.includes('page=details');
-  const nodes = isDetails
-    ? evaluateXPath(document, XPATH_TC_AUCTION_DETAILS)
-    : getTcElementsOnAuctionList();
+  const rootId = getActiveCharacterTradeRootId();
+  const fromShortAuction = getTcElementsFromShortAuctionDataValues();
+
+  if (isDetails && rootId) {
+    const fromXPath = evaluateXPath(
+      document,
+      getAuctionDetailsTcXPath(rootId)
+    ) as Element[];
+    return [...new Set([...fromXPath, ...fromShortAuction])];
+  }
+
+  const fromRows = getTcElementsOnAuctionList();
+  return [...new Set([...fromRows, ...fromShortAuction])];
+};
+
+const runConversion = (prices: PricesPer250): void => {
+  const nodes = getTcElementsForConversion();
 
   for (const node of nodes) {
     if (node.nodeType !== Node.ELEMENT_NODE) continue;
@@ -144,8 +162,7 @@ export default defineContentScript({
   matches: ['*://www.tibia.com/charactertrade/*'],
   main() {
     const run = (): void => {
-      const root = document.getElementById('currentcharactertrades');
-      if (!root) {
+      if (!getActiveCharacterTradeRootId()) {
         setTimeout(run, 300);
         return;
       }
@@ -159,7 +176,7 @@ export default defineContentScript({
     }
 
     const debouncedRunWhenReady = debounce(() => {
-      if (document.getElementById('currentcharactertrades')) {
+      if (getActiveCharacterTradeRootId()) {
         runWhenReady();
       }
     }, 150);
