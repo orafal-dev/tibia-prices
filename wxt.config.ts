@@ -5,6 +5,11 @@ import tailwindcss from '@tailwindcss/vite';
 // See https://wxt.dev/api/config.html
 // Alias matches react-shadcn guide: https://github.com/wxt-dev/examples/blob/main/examples/react-shadcn/README.md
 export default defineConfig({
+  dev: {
+    server: {
+      port: 3090,
+    },
+  },
   modules: ['@wxt-dev/module-react'],
   vite: () => ({
     plugins: [tailwindcss()],
