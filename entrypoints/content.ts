@@ -4,9 +4,10 @@ const STORAGE_KEY_LEGACY_PLN = 'tibiaPrices:pricePer250Tc';
 const DEFAULT_PRICE_PLN = 40;
 const DEFAULT_PRICE_EUR = 0;
 
-/** XPath for TC on auction list (overview) – all rows (tr[2], tr[3], …). */
-const XPATH_TC_AUCTION_LIST =
-  '//*[@id="currentcharactertrades"]/div[5]/div/div/div[4]/table/tbody/tr/td/div[2]/table/tbody/tr[position()>=2]/td/div/table/tbody/tr/td/div/div[2]/div[3]/div[6]/div[2]/b';
+import {
+  AUCTION_LIST_ROW_XPATH,
+  TC_IN_AUCTION_ROW_XPATH,
+} from './lib/auction-dom';
 
 /** XPath for TC on specific character auction (details). */
 const XPATH_TC_AUCTION_DETAILS =
@@ -83,10 +84,33 @@ const injectPriceHint = (
   tcElement.parentNode?.insertBefore(span, tcElement.nextSibling);
 };
 
+const getTcElementsOnAuctionList = (): Element[] => {
+  const rows = evaluateXPath(document, AUCTION_LIST_ROW_XPATH);
+  const tcElements: Element[] = [];
+  for (const row of rows) {
+    if (row.nodeType !== Node.ELEMENT_NODE) continue;
+    const result = document.evaluate(
+      TC_IN_AUCTION_ROW_XPATH,
+      row,
+      null,
+      XPathResult.ORDERED_NODE_SNAPSHOT_TYPE,
+      null
+    );
+    for (let i = 0; i < result.snapshotLength; i++) {
+      const node = result.snapshotItem(i);
+      if (node && node.nodeType === Node.ELEMENT_NODE) {
+        tcElements.push(node as Element);
+      }
+    }
+  }
+  return tcElements;
+};
+
 const runConversion = (prices: PricesPer250): void => {
   const isDetails = document.URL.includes('page=details');
-  const xpath = isDetails ? XPATH_TC_AUCTION_DETAILS : XPATH_TC_AUCTION_LIST;
-  const nodes = evaluateXPath(document, xpath);
+  const nodes = isDetails
+    ? evaluateXPath(document, XPATH_TC_AUCTION_DETAILS)
+    : getTcElementsOnAuctionList();
 
   for (const node of nodes) {
     if (node.nodeType !== Node.ELEMENT_NODE) continue;
