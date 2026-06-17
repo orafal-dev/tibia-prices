@@ -48,6 +48,35 @@ const parseTcFromText = (text: string): number | null => {
 const tcToAmount = (tc: number, pricePer250: number): number =>
   (tc / 250) * pricePer250;
 
+const HINT_CLASS = 'tibia-prices-pln-hint';
+
+const formatHintText = (pln: number, eur: number): string =>
+  eur > 0
+    ? `(${pln.toFixed(2)} PLN / ${eur.toFixed(2)} EUR)`
+    : `(${pln.toFixed(2)} PLN)`;
+
+const isOurHintNode = (node: Node): boolean =>
+  node.nodeType === Node.ELEMENT_NODE &&
+  (node as Element).classList.contains(HINT_CLASS);
+
+const shouldReactToMutations = (mutations: MutationRecord[]): boolean => {
+  for (const mutation of mutations) {
+    if (mutation.type === 'characterData') {
+      if (mutation.target.parentElement?.closest(`.${HINT_CLASS}`)) continue;
+      return true;
+    }
+
+    for (const node of mutation.addedNodes) {
+      if (!isOurHintNode(node)) return true;
+    }
+    for (const node of mutation.removedNodes) {
+      if (!isOurHintNode(node)) return true;
+    }
+  }
+
+  return false;
+};
+
 const evaluateXPath = (doc: Document, xpath: string): Node[] => {
   const result = doc.evaluate(
     xpath,
@@ -66,23 +95,36 @@ const evaluateXPath = (doc: Document, xpath: string): Node[] => {
 
 const injectPriceHint = (
   tcElement: Element,
+  tc: number,
   pln: number,
   eur: number
 ): void => {
+  const hintText = formatHintText(pln, eur);
   const existing = tcElement.nextElementSibling;
-  if (existing?.classList?.contains('tibia-prices-pln-hint')) {
-    existing.remove();
+
+  if (existing?.classList.contains(HINT_CLASS)) {
+    const lastTc = existing.getAttribute('data-tibia-prices-tc');
+    const lastHint = existing.getAttribute('data-tibia-prices-hint');
+    if (lastTc === String(tc) && lastHint === hintText) return;
+
+    existing.textContent = hintText;
+    existing.setAttribute('data-tibia-prices-tc', String(tc));
+    existing.setAttribute('data-tibia-prices-hint', hintText);
+    return;
   }
+
   const span = document.createElement('span');
-  span.className = 'tibia-prices-pln-hint';
+  span.className = HINT_CLASS;
+  span.setAttribute('data-tibia-prices-tc', String(tc));
+  span.setAttribute('data-tibia-prices-hint', hintText);
   span.style.cssText =
     'color:#8b6914;margin-left:0.25em;font-size:0.75em;font-weight:600;white-space:nowrap;';
-  span.textContent =
-    eur > 0
-      ? `(${pln.toFixed(2)} PLN / ${eur.toFixed(2)} EUR)`
-      : `(${pln.toFixed(2)} PLN)`;
+  span.textContent = hintText;
   tcElement.parentNode?.insertBefore(span, tcElement.nextSibling);
 };
+
+let lastConversionFingerprint = '';
+let lastConversionPricesKey = '';
 
 const getTcElementsOnAuctionList = (): Element[] => {
   const tcElements: Element[] = [];
@@ -129,6 +171,20 @@ const getTcElementsForConversion = (): Element[] => {
 
 const runConversion = (prices: PricesPer250): void => {
   const nodes = getTcElementsForConversion();
+  const fingerprint = nodes
+    .map((node) => (node.textContent ?? '').trim())
+    .join('|');
+  const pricesKey = `${prices.pln}:${prices.eur}`;
+
+  if (
+    fingerprint === lastConversionFingerprint &&
+    pricesKey === lastConversionPricesKey
+  ) {
+    return;
+  }
+
+  lastConversionFingerprint = fingerprint;
+  lastConversionPricesKey = pricesKey;
 
   for (const node of nodes) {
     if (node.nodeType !== Node.ELEMENT_NODE) continue;
@@ -137,7 +193,7 @@ const runConversion = (prices: PricesPer250): void => {
     if (tc === null || tc <= 0) continue;
     const pln = tcToAmount(tc, prices.pln);
     const eur = prices.eur > 0 ? tcToAmount(tc, prices.eur) : 0;
-    injectPriceHint(el, pln, eur);
+    injectPriceHint(el, tc, pln, eur);
   }
 };
 
@@ -181,7 +237,8 @@ export default defineContentScript({
       }
     }, 150);
 
-    const observer = new MutationObserver(() => {
+    const observer = new MutationObserver((mutations) => {
+      if (!shouldReactToMutations(mutations)) return;
       debouncedRunWhenReady();
     });
     observer.observe(document.body, {
@@ -197,6 +254,7 @@ export default defineContentScript({
         STORAGE_KEY_PRICE_PER_250_PLN in changes ||
         STORAGE_KEY_PRICE_PER_250_EUR in changes
       ) {
+        lastConversionPricesKey = '';
         runWhenReady();
       }
     });
